@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Math Battle: Racing Edition (Synced)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --p1-main: #2196f3; --p1-bg: #e3f2fd; --p1-shadow: #1565c0;
+            --p2-main: #ff5252; --p2-bg: #ffebee; --p2-shadow: #c62828;
+            --p3-main: #00b894; --p3-bg: #e0f2f1; --p3-shadow: #00695c;
+            --bg-game: #f0f4f8;
+            --border-color: #ff0000; 
+            --mode-active: #6c5ce7;
+        }
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body { 
+            font-family: 'Fredoka', sans-serif; margin: 0; padding: 10px; height: 100vh; 
+            display: flex; flex-direction: column; overflow: hidden; position: relative; 
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab); 
+            background-size: 400% 400%; animation: gradientBG 15s ease infinite; 
+        }
+        @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        
+        /* --- MARCHING ANTS BORDER --- */
+        .marching-border { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; pointer-events: none; background-image: linear-gradient(90deg, var(--border-color) 50%, transparent 50%), linear-gradient(90deg, var(--border-color) 50%, transparent 50%), linear-gradient(0deg, var(--border-color) 50%, transparent 50%), linear-gradient(0deg, var(--border-color) 50%, transparent 50%); background-repeat: repeat-x, repeat-x, repeat-y, repeat-y; background-size: 20px 8px, 20px 8px, 8px 20px, 8px 20px; background-position: 0 0, 0 100%, 0 0, 100% 0; animation: march 1s linear infinite; }
+        @keyframes march { 0% { background-position: 0 0, 0 100%, 0 0, 100% 0; } 100% { background-position: 40px 0, -40px 100%, 0 -40px, 100% 40px; } }
+
+        /* --- RACE TRACK STYLES --- */
+        .race-container {
+            width: 100%;
+            background: rgba(45, 52, 54, 0.9);
+            border-radius: 10px;
+            padding: 5px 10px;
+            margin-bottom: 10px;
+            border: 3px solid #fff;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            position: relative;
+            z-index: 50;
+        }
+        .track-header { text-align: center; color: #dfe6e9; font-size: 0.8rem; letter-spacing: 1px; margin-bottom: 5px; text-transform: uppercase; font-weight: bold; }
+        .race-lane {
+            position: relative;
+            height: 35px;
+            border-bottom: 1px dashed rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+        }
+        .race-lane:last-child { border-bottom: none; }
+        .finish-line {
+            position: absolute;
+            right: 10px;
+            top: 0;
+            bottom: 0;
+            width: 10px;
+            background-image: linear-gradient(45deg, #000 25%, transparent 25%), linear-gradient(-45deg, #000 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #000 75%), linear-gradient(-45deg, transparent 75%, #000 75%);
+            background-size: 10px 10px;
+            background-color: #fff;
+            z-index: 1;
+        }
+        .car-wrapper {
+            position: absolute;
+            left: 0%; 
+            transition: left 0.5s linear; 
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform: translateX(0); 
+            width: 40px;
+        }
+        .car-icon { font-size: 1.5rem; transform: scaleX(-1); }
+        .car-boost { animation: boostAnim 0.3s ease-out; }
+        @keyframes boostAnim { 0% { transform: translateX(0) scale(1); } 50% { transform: translateX(20px) scale(1.2); } 100% { transform: translateX(0) scale(1); } }
+
+        /* --- GAME LAYOUT --- */
+        .game-container { display: grid; width: 100%; flex-grow: 1; position: relative; gap: 10px; overflow: hidden; }
+        .grid-1 { grid-template-columns: 1fr; max-width: 600px; margin: 0 auto; }
+        .grid-2 { grid-template-columns: 1fr 1fr; }
+        .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+        
+        /* --- PLAYER AREA --- */
+        .player-area { display: flex; flex-direction: column; padding: 8px; position: relative; transition: background 0.3s; justify-content: flex-start; background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); border-radius: 15px; border: 2px solid rgba(255,255,255,0.5); height: 100%; }
+        .player-header { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.9); padding: 5px 10px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 5px; height: 50px; }
+        .p-info { display: flex; align-items: center; overflow: hidden; }
+        .p-avatar { font-size: 2rem; margin-right: 5px; }
+        .p-name { font-size: 1.1rem; font-weight: 700; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .score-box { background: #2d3436; color: #fff; padding: 4px 10px; border-radius: 8px; font-size: 1.1rem; font-weight: 700; min-width: 40px; text-align: center; }
+        
+        /* --- QUESTION CARD --- */
+        .question-card { background: rgba(255,255,255,0.95); border-radius: 15px; padding: 5px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 5px; flex-grow: 0; height: 140px; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; overflow: hidden; }
+        .math-problem { font-size: 3.5rem; font-weight: 700; color: #2d3436; line-height: 1; }
+        .answer-box { font-size: 2.5rem; height: 50px; width: 90%; border-bottom: 4px dashed #b2bec3; color: #636e72; display: flex; align-items: center; justify-content: center; font-weight: 600; margin-top: 5px; }
+        
+        /* --- FEEDBACK --- */
+        .round-feedback { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.98); z-index: 5; display: flex; justify-content: center; align-items: center; flex-direction: column; font-size: 1.2rem; font-weight: bold; color: #2d3436; opacity: 0; pointer-events: none; transition: opacity 0.2s; border-radius: 15px; }
+        .round-feedback.show { opacity: 1; }
+        .round-feedback span { font-size: 4rem; display: block; margin-bottom: 5px; }
+
+        /* --- NUMPAD --- */
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; width: 100%; flex-grow: 1; align-content: center; }
+        .btn-num { border: none; border-radius: 10px; font-family: 'Fredoka', sans-serif; font-size: 1.5rem; font-weight: 700; padding: 8px 0; cursor: pointer; transition: transform 0.1s; width: 100%; height: 100%; }
+        .btn-num:active { transform: translateY(3px); }
+        .btn-animate { animation: buttonPop 0.2s ease-in-out; }
+        @keyframes buttonPop { 0% {transform:scale(1);} 50% {transform:scale(0.9);} 100% {transform:scale(1);} }
+
+        /* --- PLAYER COLORS --- */
+        .area-p1 .p-name { color: var(--p1-main); }
+        .area-p1 .btn-num { background: #2196f3; color: #ffffff; box-shadow: 0 3px 0 #1565c0; }
+        .area-p1 .btn-num:active { transform: translateY(3px); box-shadow: 0 1px 0 #1565c0; }
+        .area-p1 .btn-enter { background: #0d47a1; grid-column: span 3; box-shadow: 0 3px 0 #002171; }
+        .area-p1 .btn-clear { background: #ef5350; box-shadow: 0 3px 0 #b61827; }
+
+        .area-p2 .p-name { color: var(--p2-main); }
+        .area-p2 .btn-num { background: #ff5252; color: #ffffff; box-shadow: 0 3px 0 #c62828; }
+        .area-p2 .btn-enter { background: #b71c1c; grid-column: span 3; box-shadow: 0 3px 0 #7f0000; }
+        .area-p2 .btn-clear { background: #42a5f5; box-shadow: 0 3px 0 #1565c0; }
+
+        .area-p3 .p-name { color: var(--p3-main); }
+        .area-p3 .btn-num { background: #00b894; color: #ffffff; box-shadow: 0 3px 0 #00695c; }
+        .area-p3 .btn-enter { background: #00695c; grid-column: span 3; box-shadow: 0 3px 0 #004d40; }
+        .area-p3 .btn-clear { background: #fdcb6e; box-shadow: 0 3px 0 #e17055; }
+
+        /* --- UI OVERLAYS --- */
+        .timer-float { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); background: #2d3436; color: #f1c40f; padding: 2px 20px; border-radius: 30px; font-size: 1.5rem; font-weight: 800; z-index: 100; border: 3px solid #fff; }
+        .overlay-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(245, 247, 250, 0.98); z-index: 200; display: flex; flex-direction: column; align-items: center; transition: opacity 0.3s; overflow-y: auto; padding: 20px 0; }
+        .hidden { opacity: 0; pointer-events: none; display: none !important; }
+        .title-badge { background: #6c5ce7; color: white; padding: 10px 40px; border-radius: 50px; font-size: 2rem; font-weight: 800; margin-bottom: 10px; box-shadow: 0 10px 20px rgba(108, 92, 231, 0.3); text-transform: uppercase; text-align: center; }
+        .settings-container { width: 90%; max-width: 500px; background: #fff; padding: 15px; border-radius: 20px; margin-bottom: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        
+        .mode-buttons { display: flex; justify-content: center; gap: 5px; }
+        .mode-btn { background: #f1f2f6; border: 2px solid #dfe6e9; color: #b2bec3; padding: 8px; border-radius: 10px; font-size: 0.9rem; font-weight: 700; cursor: pointer; flex: 1; }
+        .mode-btn.active { background: var(--mode-active); color: #fff; border-color: var(--mode-active); }
+        
+        .range-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .range-box { background: #f9f9f9; padding: 8px; border-radius: 10px; border: 1px solid #dfe6e9; }
+        .range-box h4 { margin: 0 0 5px 0; font-size: 0.9rem; color: #2d3436; text-align: center; }
+        .range-inputs { display: flex; align-items: center; gap: 5px; justify-content: center; }
+        .range-inputs input { width: 60px; padding: 5px; text-align: center; border: 1px solid #ccc; border-radius: 5px; font-weight: bold; }
+        
+        .players-input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-bottom: 10px; }
+        .name-input { padding: 8px; border: 2px solid #dfe6e9; border-radius: 8px; width: 100%; text-align: center; font-weight: bold; font-family: inherit; }
+        
+        .btn-start { background: #00b894; color: white; border: none; padding: 12px 50px; font-size: 1.5rem; border-radius: 50px; font-weight: 800; cursor: pointer; box-shadow: 0 5px 0 #008f72; margin-top: 5px; font-family: inherit; transition: all 0.2s; }
+        .btn-start:active { transform: translateY(4px); box-shadow: 0 1px 0 #008f72; }
+        .btn-help { background: #a29bfe; color: white; border: none; padding: 8px 20px; font-size: 1rem; border-radius: 20px; font-weight: 700; cursor: pointer; }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 300; display: flex; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 20px; width: 90%; max-width: 500px; text-align: left; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; max-height: 80vh; overflow-y: auto; }
+        .modal-close { background: #ff7675; color: white; border: none; padding: 5px 12px; position: absolute; top: 15px; right: 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+
+        @media (max-width: 768px) {
+            .math-problem { font-size: 2.5rem; }
+            .question-card { height: 110px; }
+            .btn-num { font-size: 1.2rem; padding: 5px 0; }
+            .grid-3 { grid-template-columns: 1fr; overflow-y: auto; } 
+            .race-container { padding: 2px 5px; }
+            .race-lane { height: 30px; }
+            .car-wrapper { width: 30px; }
+            .car-icon { font-size: 1.2rem; }
+        }
+        
+        #saveStatus { font-size: 0.9rem; color: #636e72; margin-top: 10px; min-height: 20px; font-weight: bold; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div class="marching-border"></div>
+
+    <!-- MODAL PETUNJUK -->
+    <div id="helpModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <button class="modal-close" onclick="toggleHelp()">Tutup</button>
+            <h3 style="margin-top:0; color:#6c5ce7; border-bottom: 2px dashed #ddd; padding-bottom: 10px;">📜 Cara Bermain</h3>
+            <div style="color:#2d3436; font-size:0.95rem; line-height: 1.5; text-align: left;">
+                <p><strong>Persiapan:</strong></p>
+                <ol style="margin-top:0; padding-left: 20px;">
+                    <li>Masukkan nama Pemain sesuai jumlah yang dipilih.</li>
+                    <li>Atur <strong>Waktu Permainan</strong>.</li>
+                    <li>Pilih operasi matematika.</li>
+                </ol>
+                <p><strong>Mekanisme Balapan:</strong></p>
+                <ul style="margin-top:0; padding-left: 20px;">
+                    <li>🏎️ <strong>Mobil Otomatis:</strong> Mobil bergerak konstan ke finis.</li>
+                    <li>⚡ <strong>Turbo Boost:</strong> Jawab dengan BENAR untuk mempercepat mobil.</li>
+                    <li>🔄 <strong>Soal Sama:</strong> Soal yang muncul <strong>sama untuk semua pemain</strong>. Siapa cepat dia dapat momen untuk boost! Jika ada yang menjawab benar, soal otomatis berganti untuk semua.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DESKRIPSI -->
+    <div id="descModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <button class="modal-close" onclick="toggleDesc()">Tutup</button>
+            <h3 style="margin-top:0; color:#6c5ce7; border-bottom: 2px dashed #ddd; padding-bottom: 10px;">📖 Tentang Game</h3>
+            <div style="color:#2d3436; font-size:0.95rem; text-align: justify; line-height: 1.6;">
+                <p>
+                    <strong>Math Battle: Racing Edition</strong> adalah platform edukasi interaktif untuk melatih refleks mental aritmatika secara kompetitif.
+                </p>
+                <p>
+                    <strong>Fitur Sinkronisasi:</strong> Semua pemain menghadapi soal yang sama secara bersamaan. Ini menciptakan suasana kompetisi "Cerdas Cermat" yang lebih adil dan menegangkan.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- START SCREEN -->
+    <div id="startScreen" class="overlay-screen">
+        <div class="title-badge">🏎️ MATH RACE 🏎️</div>
+        
+        <div style="display:flex; gap:10px; margin-bottom:15px;">
+            <button class="btn-help" onclick="toggleDesc()">Deskripsi</button>
+            <button class="btn-help" onclick="toggleHelp()">Cara Main</button>
+        </div>
+
+        <div class="settings-container">
+            <div style="text-align:center; margin-bottom:10px;">
+                <label style="font-weight:bold; color:#2d3436;">👥 Jumlah Pembalap</label>
+                <div class="mode-buttons" style="margin-top:5px;">
+                    <button class="mode-btn" onclick="setPlayerCount(1)" id="btnP1">Solo</button>
+                    <button class="mode-btn active" onclick="setPlayerCount(2)" id="btnP2">Duel (2)</button>
+                    <button class="mode-btn" onclick="setPlayerCount(3)" id="btnP3">Trio (3)</button>
+                </div>
+            </div>
+
+            <div id="nameInputsContainer" class="players-input-grid"></div>
+
+            <hr style="border:0; border-top:1px dashed #ddd; margin: 10px 0;">
+
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <div style="flex:1;">
+                    <label style="font-size:0.9rem; font-weight:bold;">⏱️ Waktu (detik)</label>
+                    <input type="number" id="gameDuration" value="60" min="10" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:8px; text-align:center; font-weight:bold; margin-top:5px;">
+                </div>
+                <div style="flex:2;">
+                    <label style="font-size:0.9rem; font-weight:bold;">Operasi</label>
+                    <div class="mode-buttons" style="margin-top:5px;">
+                        <button class="mode-btn active" onclick="selectMode('all')" data-mode="all">Semua</button>
+                        <button class="mode-btn" onclick="selectMode('+')" data-mode="+">+</button>
+                        <button class="mode-btn" onclick="selectMode('-')" data-mode="-">-</button>
+                        <button class="mode-btn" onclick="selectMode('x')" data-mode="x">×</button>
+                        <button class="mode-btn" onclick="selectMode(':')" data-mode=":">÷</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="range-grid">
+                <div class="range-box">
+                    <h4>Angka A</h4>
+                    <div class="range-inputs">
+                        <input type="number" id="minA" value="1"> s/d <input type="number" id="maxA" value="20">
+                    </div>
+                </div>
+                <div class="range-box">
+                    <h4>Angka B</h4>
+                    <div class="range-inputs">
+                        <input type="number" id="minB" value="1"> s/d <input type="number" id="maxB" value="20">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn-start" onclick="startGame()">GAS POL! 🚀</button>
+    </div>
+
+    <!-- RESULT SCREEN -->
+    <div id="resultScreen" class="overlay-screen hidden">
+        <div class="title-badge" style="background:#fdcb6e; color:#2d3436;">🏁 HASIL BALAPAN</div>
+        <h2 id="winnerText" style="color:#2d3436; margin: 10px 0; text-align:center; padding: 0 10px;"></h2>
+        <div id="resultGrid" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin: 20px;"></div>
+        
+        <!-- SAVE STATUS -->
+        <div id="saveStatus"></div>
+
+        <button class="btn-start" onclick="resetGame()">BALAP LAGI</button>
+    </div>
+
+    <!-- GAMEPLAY AREA -->
+    <!-- VISUAL RACE TRACK -->
+    <div id="raceTrack" class="race-container">
+        <div class="track-header">Lintasan Balap</div>
+        <!-- Lanes will be injected here via JS -->
+    </div>
+
+    <div class="timer-float" id="timerDisplay">60</div>
+    
+    <div id="gameContainer" class="game-container"></div>
+
+    <script>
+        // --- KONFIGURASI DATABASE ---
+        // Ganti URL ini dengan URL Web App Script Anda
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyr5spYgep5GJelXKOGG7qVQteRMxaDeRMQj5SVjSqZQ95H4W-o4wAxkxr344s_6LBKJw/exec"; 
+        // -----------------------------
+
+        let playerCount = 2;
+        let players = [];
+        let timer = 60;
+        let totalDuration = 60; 
+        let gameInterval;
+        let raceInterval; 
+        let isGameActive = false;
+        let selectedMode = 'all';
+        let rMinA = 1, rMaxA = 20, rMinB = 1, rMaxB = 20;
+        
+        // Asset Mobil
+        const CAR_ICONS = ['🏎️', '🚓', '🚕']; 
+        const CAR_COLORS = ['#2196f3', '#ff5252', '#00b894'];
+
+        window.onload = () => { setPlayerCount(2); };
+
+        function toggleHelp() { document.getElementById('helpModal').classList.toggle('hidden'); }
+        function toggleDesc() { document.getElementById('descModal').classList.toggle('hidden'); }
+
+        function setPlayerCount(n) {
+            playerCount = n;
+            [1,2,3].forEach(i => {
+                const btn = document.getElementById(`btnP${i}`);
+                if(i === n) btn.classList.add('active'); else btn.classList.remove('active');
+            });
+            const container = document.getElementById('nameInputsContainer');
+            container.innerHTML = '';
+            if(n === 3) container.style.gridTemplateColumns = '1fr 1fr 1fr';
+            else if(n === 1) container.style.gridTemplateColumns = '1fr';
+            else container.style.gridTemplateColumns = '1fr 1fr';
+            
+            for(let i=0; i<n; i++) {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <div style="font-size:2rem; margin-bottom:5px; text-align:center;">${CAR_ICONS[i]}</div>
+                    <input type="text" class="name-input" id="inputP${i+1}" placeholder="Pembalap ${i+1}" autocomplete="off" style="border-color:${CAR_COLORS[i]}; color:${CAR_COLORS[i]}">
+                `;
+                container.appendChild(div);
+            }
+        }
+
+        function selectMode(mode) {
+            selectedMode = mode;
+            document.querySelectorAll('.mode-btn[data-mode]').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.mode === mode) btn.classList.add('active');
+            });
+        }
+
+        function startGame() {
+            // Setup Pemain
+            players = [];
+            for(let i=1; i<=playerCount; i++) {
+                const nameVal = document.getElementById(`inputP${i}`).value;
+                players.push({
+                    id: i,
+                    name: nameVal || `Player ${i}`,
+                    score: 0,
+                    currentInput: '',
+                    colorClass: `area-p${i}`,
+                    icon: CAR_ICONS[i-1],
+                    color: CAR_COLORS[i-1],
+                    carPosition: 0, 
+                    currentAnswer: 0 // Akan diupdate oleh generateGlobalProblem
+                });
+            }
+
+            // Setup Waktu & Limit
+            let dur = parseInt(document.getElementById('gameDuration').value);
+            timer = (!isNaN(dur) && dur > 0) ? dur : 60;
+            totalDuration = timer;
+
+            let inMinA = parseInt(document.getElementById('minA').value);
+            let inMaxA = parseInt(document.getElementById('maxA').value);
+            rMinA = isNaN(inMinA) ? 1 : inMinA;
+            rMaxA = isNaN(inMaxA) ? 20 : inMaxA;
+            if(rMaxA < rMinA) rMaxA = rMinA + 5;
+
+            let inMinB = parseInt(document.getElementById('minB').value);
+            let inMaxB = parseInt(document.getElementById('maxB').value);
+            rMinB = isNaN(inMinB) ? 1 : inMinB;
+            rMaxB = isNaN(inMaxB) ? 20 : inMaxB;
+            if(rMaxB < rMinB) rMaxB = rMinB + 5;
+
+            // Render
+            renderGameArea();
+            renderRaceTrack();
+
+            isGameActive = true;
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('resultScreen').classList.add('hidden');
+            
+            // --- PERUBAHAN UTAMA: Generate 1 Soal untuk SEMUA ---
+            generateGlobalProblem(); 
+
+            clearInterval(gameInterval);
+            clearInterval(raceInterval);
+            
+            document.getElementById('timerDisplay').innerText = timer;
+            gameInterval = setInterval(gameTimer, 1000);
+            raceInterval = setInterval(updateCarPositions, 50);
+        }
+
+        function renderRaceTrack() {
+            const track = document.getElementById('raceTrack');
+            track.innerHTML = '<div class="track-header">Lintasan Balap</div>';
+            players.forEach(p => {
+                const lane = document.createElement('div');
+                lane.className = 'race-lane';
+                lane.innerHTML = `
+                    <div class="finish-line"></div>
+                    <div class="car-wrapper" id="carP${p.id}" style="left: 0%;">
+                        <div class="car-icon" style="color: ${p.color}; text-shadow: 0 2px 0 rgba(0,0,0,0.3);">${p.icon}</div>
+                    </div>
+                `;
+                track.appendChild(lane);
+            });
+        }
+
+        function renderGameArea() {
+            const gameContainer = document.getElementById('gameContainer');
+            gameContainer.className = 'game-container grid-' + playerCount;
+            gameContainer.innerHTML = '';
+            players.forEach(p => {
+                const pDiv = document.createElement('div');
+                pDiv.className = `player-area ${p.colorClass}`;
+                pDiv.id = `areaP${p.id}`;
+                pDiv.innerHTML = `
+                    <div class="player-header">
+                        <div class="p-info">
+                            <span class="p-avatar">${p.icon}</span>
+                            <span class="p-name">${p.name}</span>
+                        </div>
+                        <div class="score-box" id="scoreP${p.id}">0</div>
+                    </div>
+                    <div class="question-card">
+                        <div class="math-problem" id="qTextP${p.id}">?</div>
+                        <div class="answer-box" id="ansTextP${p.id}"></div>
+                        <div class="round-feedback" id="feedbackP${p.id}"></div>
+                    </div>
+                    <div class="numpad">
+                        ${[1,2,3,4,5,6,7,8,9].map(n => `<button class="btn-num" onclick="pressKey(${p.id-1}, '${n}')">${n}</button>`).join('')}
+                        <button class="btn-num btn-clear" onclick="pressKey(${p.id-1}, 'C')">DEL</button>
+                        <button class="btn-num" onclick="pressKey(${p.id-1}, '0')">0</button>
+                        <button class="btn-num" onclick="pressKey(${p.id-1}, '-')">-</button>
+                        <button id="btnEnterP${p.id}" class="btn-num btn-enter" onclick="submitAnswer(${p.id-1})">JAWAB</button>
+                    </div>
+                `;
+                gameContainer.appendChild(pDiv);
+            });
+        }
+
+        function gameTimer() {
+            timer--;
+            document.getElementById('timerDisplay').innerText = timer;
+            const tEl = document.getElementById('timerDisplay');
+            if(timer <= 10) { tEl.style.color = '#ff7675'; tEl.style.borderColor='#ff7675'; }
+            else { tEl.style.color = '#f1c40f'; tEl.style.borderColor='#fff'; }
+            if(timer <= 0) endGame();
+        }
+
+        function updateCarPositions() {
+            if (!isGameActive) return;
+            const maxBasePosition = 90; 
+            const tickRate = 0.05; 
+            const incrementPerTick = maxBasePosition / (totalDuration * (1/tickRate));
+            players.forEach(p => {
+                if (p.carPosition < 95) { 
+                   p.carPosition += incrementPerTick;
+                }
+                const carEl = document.getElementById(`carP${p.id}`);
+                if(carEl) {
+                    let displayPos = Math.min(p.carPosition, 92); 
+                    carEl.style.left = displayPos + '%';
+                }
+            });
+        }
+
+        // --- FUNGSI GLOBAL PROBLEM BARU ---
+        function generateGlobalProblem() {
+            let op = selectedMode;
+            if (selectedMode === 'all') {
+                const ops = ['+', '-', 'x', ':'];
+                op = ops[Math.floor(Math.random() * ops.length)];
+            }
+            
+            let a, b, txt, ans;
+            const rnd = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+            const fmt = (n) => n < 0 ? `(${n})` : `${n}`;
+            
+            let attempts = 0;
+            do {
+                if (op === ':') {
+                    b = rnd(rMinB, rMaxB); if(b===0) b=1;
+                    let res = rnd(rMinA, rMaxA); 
+                    a = b * res; 
+                    ans = res;
+                } else {
+                    a = rnd(rMinA, rMaxA); 
+                    b = rnd(rMinB, rMaxB);
+                    if (op === '+') ans = a + b;
+                    else if (op === '-') ans = a - b;
+                    else if (op === 'x') ans = a * b;
+                }
+                attempts++;
+            } while (a === b && attempts < 3);
+
+            if (op === ':') txt = `${fmt(a)} ÷ ${fmt(b)}`;
+            else if (op === 'x') txt = `${fmt(a)} × ${fmt(b)}`;
+            else txt = `${fmt(a)} ${op} ${fmt(b)}`;
+
+            // --- UPDATE SEMUA PEMAIN DENGAN SOAL YANG SAMA ---
+            players.forEach(p => {
+                p.currentAnswer = ans; // Kunci jawaban sama
+                // Jangan reset currentInput di sini, reset hanya saat ada yang benar (di submitAnswer)
+                // Update UI Soal
+                const qEl = document.getElementById(`qTextP${p.id}`);
+                if(qEl) qEl.innerText = txt;
+            });
+        }
+
+        function pressKey(pIndex, key) {
+            if (!isGameActive) return;
+            const p = players[pIndex];
+            if (key === 'C') { 
+                p.currentInput = ''; 
+            } else {
+                if (p.currentInput.length < 6) {
+                    if (key === '-' && p.currentInput.length > 0) return; 
+                    p.currentInput += key;
+                }
+            }
+            document.getElementById(`ansTextP${p.id}`).innerText = p.currentInput;
+        }
+
+        function submitAnswer(pIndex) {
+            if (!isGameActive) return;
+            const p = players[pIndex];
+            
+            const btn = document.getElementById(`btnEnterP${p.id}`);
+            btn.classList.add('btn-animate');
+            setTimeout(() => btn.classList.remove('btn-animate'), 200);
+
+            if (!p.currentInput || p.currentInput === '-') return;
+            
+            let val = parseInt(p.currentInput);
+            
+            if (val === p.currentAnswer) {
+                // --- JAWABAN BENAR ---
+                p.score += 10;
+                
+                // Boost Mobil Pemain yg Menang
+                p.carPosition += 7; 
+                const carEl = document.getElementById(`carP${p.id}`);
+                carEl.classList.add('car-boost');
+                setTimeout(()=>carEl.classList.remove('car-boost'), 300);
+
+                showFeedback(p.id, true);
+                updateScoreDisplay(p.id);
+
+                // --- RESET ROUND (SEMUA PEMAIN) ---
+                // Bersihkan input semua pemain karena soal sudah basi/terjawab
+                players.forEach(pl => {
+                    pl.currentInput = '';
+                    document.getElementById(`ansTextP${pl.id}`).innerText = '';
+                });
+
+                // Generate Soal Baru untuk Semua
+                generateGlobalProblem();
+            } else {
+                // --- JAWABAN SALAH ---
+                const card = document.getElementById(`areaP${p.id}`);
+                card.style.backgroundColor = '#fab1a0';
+                setTimeout(() => card.style.backgroundColor = 'rgba(255,255,255,0.4)', 300);
+                
+                showFeedback(p.id, false);
+                p.currentInput = '';
+                document.getElementById(`ansTextP${p.id}`).innerText = '';
+            }
+        }
+
+        function showFeedback(pId, isCorrect) {
+            const el = document.getElementById(`feedbackP${pId}`);
+            if(isCorrect) {
+                el.innerHTML = "<span style='color:#00b894; font-size:4rem;'>✅</span><div style='font-size:1rem'>Gas Pol!</div>";
+            } else {
+                el.innerHTML = "<span style='color:#d63031; font-size:4rem;'>❌</span>";
+            }
+            el.classList.add('show');
+            setTimeout(() => { el.classList.remove('show'); }, 600);
+        }
+
+        function updateScoreDisplay(pId) {
+            const p = players.find(pl => pl.id === pId);
+            document.getElementById(`scoreP${pId}`).innerText = p.score;
+        }
+
+        function endGame() {
+            isGameActive = false;
+            clearInterval(gameInterval);
+            clearInterval(raceInterval);
+            
+            let maxScore = -1;
+            players.forEach(p => maxScore = Math.max(maxScore, p.score));
+            const winners = players.filter(p => p.score === maxScore);
+            let msg = "";
+            
+            if (players.length > 1 && maxScore === 0) msg = "Tidak ada yang jalan!";
+            else if (winners.length === players.length && players.length > 1) msg = "Hasil Seri!";
+            else if (winners.length === 1) msg = `🏆 ${winners[0].name} Juara!`;
+            else msg = `Seri: ${winners.map(w => w.name).join(' & ')}`;
+            
+            document.getElementById('winnerText').innerText = msg;
+            const resGrid = document.getElementById('resultGrid');
+            resGrid.innerHTML = '';
+            const sortedPlayers = [...players].sort((a,b) => b.score - a.score);
+            
+            sortedPlayers.forEach(p => {
+                const div = document.createElement('div');
+                div.style.textAlign = 'center';
+                div.style.background = '#fff';
+                div.style.padding = '15px';
+                div.style.borderRadius = '15px';
+                div.style.boxShadow = '0 4px 10px rgba(0,0,0,0.1)';
+                div.style.minWidth = '120px';
+                div.innerHTML = `
+                    <div style="font-size:3rem;">${p.icon}</div>
+                    <h3 style="color:${p.color}; margin:5px 0;">${p.name}</h3>
+                    <h1 style="font-size:2.5rem; margin:0; color:#2d3436;">${p.score}</h1>
+                    <small style="color:#636e72;">Poin</small>
+                `;
+                resGrid.appendChild(div);
+            });
+            
+            document.getElementById('resultScreen').classList.remove('hidden');
+            saveResultToSheet(msg);
+        }
+
+        function saveResultToSheet(winnerText) {
+            const statusDiv = document.getElementById('saveStatus');
+            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("SCRIPT_URL_ANDA")) {
+                statusDiv.innerText = "⚠ Database belum dikonfigurasi.";
+                return;
+            }
+            statusDiv.innerText = "⏳ Menyimpan data balapan...";
+            const payload = {
+                timestamp: new Date().toISOString(),
+                duration: totalDuration,
+                mode: selectedMode,
+                winner: winnerText,
+                players: players.map(p => ({
+                    name: p.name,
+                    score: p.score
+                }))
+            };
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(() => {
+                statusDiv.innerText = "✅ Data berhasil dikirim ke database!";
+                statusDiv.style.color = "#00b894";
+            })
+            .catch(err => {
+                console.error(err);
+                statusDiv.innerText = "❌ Gagal koneksi database.";
+                statusDiv.style.color = "#d63031";
+            });
+        }
+
+        function resetGame() {
+            document.getElementById('resultScreen').classList.add('hidden');
+            document.getElementById('saveStatus').innerText = ''; 
+            document.getElementById('startScreen').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
